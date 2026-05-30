@@ -1,5 +1,10 @@
 # graph4spo — RAG sobre SharePoint Online
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Azure](https://img.shields.io/badge/Cloud-Azure-0078D4?logo=microsoftazure&logoColor=white)](#)
+[![Last commit](https://img.shields.io/github/last-commit/EdneiMonteiro/graph4spo)](https://github.com/EdneiMonteiro/graph4spo/commits)
+[![ORCID](https://img.shields.io/badge/ORCID-0009--0006--0765--4201-A6CE39?logo=orcid&logoColor=white)](https://orcid.org/0009-0006-0765-4201)
+
 ## Visão Geral
 
 Este repositório contém código de exemplo / prova de conceito (PoC) que demonstra
