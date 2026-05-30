@@ -1,0 +1,30 @@
+# =============================================================================
+# Dependências Python — Azure OpenAI + AI Search + LangChain + SharePoint
+# =============================================================================
+
+# --- LangChain Core ---
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-openai>=0.1.8
+langchain-community>=0.2.0
+
+# --- Azure OpenAI / AI Search ---
+openai>=1.30.0
+azure-search-documents>=11.4.0
+
+# --- Azure Identity e Key Vault ---
+azure-identity>=1.17.0
+azure-keyvault-secrets>=4.8.0
+azure-keyvault-certificates>=4.8.0
+
+# --- Microsoft Graph / SharePoint (HTTP direto) ---
+requests>=2.32.0
+
+# --- Tokenização (usado implicitamente pelo LangChain para contagem de tokens) ---
+tiktoken>=0.7.0
+
+# --- Variáveis de ambiente ---
+python-dotenv>=1.0.1
+
+# --- MSAL (opcional — usado apenas se substituir CertificateCredential por MSAL direto) ---
+# msal>=1.28.0

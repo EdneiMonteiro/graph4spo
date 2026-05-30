@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides v2 — graph4spo</title>
+<style>
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf3;
+       height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px;}
+  h1{font-size:1.8rem;font-weight:700;text-align:center;}
+  h1 em{color:#58a6ff;font-style:normal;}
+  p{color:#8b949e;font-size:1rem;text-align:center;max-width:480px;line-height:1.65;}
+  .tags{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+  .tag{background:#1c2130;border:1px solid rgba(88,166,255,.3);border-radius:6px;
+       padding:6px 14px;font-size:.8rem;font-weight:600;color:#58a6ff;}
+  a.btn{background:#1c2130;border:1px solid rgba(88,166,255,.4);border-radius:8px;
+        padding:10px 22px;font-size:.9rem;font-weight:600;color:#58a6ff;text-decoration:none;
+        transition:background .2s,border-color .2s;}
+  a.btn:hover{background:rgba(88,166,255,.15);border-color:#58a6ff;}
+  a.home{font-size:.8rem;color:#8b949e;text-decoration:none;margin-top:8px;}
+  a.home:hover{color:#fff;}
+</style>
+</head>
+<body>
+  <h1>v2 — Container Apps<br><em>+ Managed Identity</em></h1>
+  <p>Indexação via Azure Container Apps com User-Assigned Managed Identity. FastAPI com <code>POST /index</code> como trigger. MI acessa o Key Vault para obter o cert do Service Principal e autentica no SharePoint.</p>
+  <div class="tags">
+    <span class="tag">🪪 User-Assigned MI</span>
+    <span class="tag">🐳 Container Apps</span>
+    <span class="tag">⚡ FastAPI /index</span>
+    <span class="tag">🔑 Key Vault via MI</span>
+  </div>
+  <a class="btn" href="../auth/index.html">Ver slides de autenticação →</a>
+  <a class="home" href="../index.html">← Voltar ao índice</a>
+</body>
+</html>

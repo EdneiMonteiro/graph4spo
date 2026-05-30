@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acesso ao SharePoint Online via Graph API</title>
+<style>
+  :root {
+    --bg:      #0d1117;
+    --bg2:     #161b22;
+    --card:    #1c2130;
+    --border:  rgba(48,54,72,.9);
+    --text:    #e6edf3;
+    --muted:   #8b949e;
+    --accent:  #3fb950;   /* green */
+    --accent2: #58a6ff;   /* blue  */
+    --purple:  #bc8cff;
+    --orange:  #ffa657;
+    --red:     #ff7b72;
+    --yellow:  #e3b341;
+    --code-bg: #0d1117;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:var(--bg);color:var(--text);
+    height:100vh;overflow:hidden;user-select:none;
+  }
+  #deck{width:100vw;height:100vh;position:relative;}
+  .slide{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;
+    padding:40px 68px 44px;
+    opacity:0;transform:translateY(18px);pointer-events:none;
+    transition:opacity .3s ease,transform .3s ease;overflow:hidden;
+  }
+  .slide.active{opacity:1;transform:none;pointer-events:auto;}
+
+  /* ── Tag / headings ── */
+  .tag{font-size:.68rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:5px;}
+  h1{font-size:2.5rem;font-weight:700;line-height:1.15;color:#fff;}
+  h1 em{color:var(--accent);font-style:normal;}
+  h2{font-size:1.7rem;font-weight:700;color:#fff;margin-bottom:20px;padding-bottom:11px;
+     border-bottom:2px solid var(--accent);display:flex;align-items:center;gap:12px;}
+  h2 .ico{font-size:1.4rem;}
+  h3{font-size:.95rem;font-weight:600;color:var(--accent);margin-bottom:7px;}
+  p{font-size:.93rem;line-height:1.65;color:var(--muted);}
+  .sub{font-size:1.1rem;color:var(--muted);margin-top:16px;max-width:680px;line-height:1.7;}
+  .meta{margin-top:auto;display:flex;gap:20px;flex-wrap:wrap;}
+  .badge{background:var(--card);border:1px solid var(--accent);border-radius:6px;
+         padding:6px 14px;font-size:.78rem;font-weight:600;color:var(--accent);}
+
+  /* ── Grids ── */
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+
+  /* ── Cards ── */
+  .c{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
+  .c.ok    {border-color:rgba(63,185,80,.4); background:rgba(63,185,80,.07);}
+  .c.bad   {border-color:rgba(255,123,114,.4);background:rgba(255,80,60,.07);}
+  .c.warn  {border-color:rgba(255,166,87,.4); background:rgba(255,120,0,.07);}
+  .c.blue  {border-color:rgba(88,166,255,.35);background:rgba(30,90,200,.1);}
+  .c.pur   {border-color:rgba(188,140,255,.35);background:rgba(100,50,200,.1);}
+  .c.dim   {border-color:var(--border);}
+
+  /* ── Lists ── */
+  ul{list-style:none;display:flex;flex-direction:column;gap:8px;}
+  ul li{display:flex;align-items:flex-start;gap:9px;font-size:.9rem;color:var(--muted);line-height:1.5;}
+  ul li::before{content:"▸";color:var(--accent);flex-shrink:0;margin-top:1px;}
+  ul.steps{counter-reset:s;gap:11px;}
+  ul.steps li::before{
+    counter-increment:s;content:counter(s);
+    background:var(--accent);color:#0d1117;border-radius:50%;
+    width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;
+    font-size:.7rem;font-weight:800;flex-shrink:0;}
+
+  /* ── Code ── */
+  pre{background:var(--code-bg);border:1px solid rgba(48,54,72,.9);border-radius:8px;
+      padding:14px 18px;font-family:'Cascadia Code','Consolas',monospace;
+      font-size:.77rem;line-height:1.72;overflow-x:auto;white-space:pre;}
+  code{font-family:'Cascadia Code','Consolas',monospace;font-size:.84em;
+       background:rgba(255,255,255,.07);border-radius:4px;padding:1px 5px;}
+  pre code{background:none;padding:0;font-size:inherit;}
+  .k {color:#79c0ff;}  /* keyword  */
+  .s {color:#a5d6ff;}  /* string   */
+  .c1{color:#6e7681;}  /* comment  */
+  .p {color:#3fb950;}  /* function */
+  .n {color:#ffa657;}  /* name     */
+  .v {color:#79c0ff;}  /* value    */
+  .u {color:#58a6ff;}  /* url/path */
+  .kw{color:#e3b341;}  /* special  */
+
+  /* ── Table ── */
+  table{width:100%;border-collapse:collapse;font-size:.86rem;}
+  th{background:rgba(63,185,80,.15);color:#fff;padding:9px 13px;text-align:left;
+     font-weight:600;border-bottom:1px solid rgba(63,185,80,.3);}
+  td{padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.055);color:var(--muted);vertical-align:top;}
+  tr:hover td{background:rgba(255,255,255,.03);}
+  .ok {background:rgba(63,185,80,.18); color:#3fb950;border-radius:4px;padding:1px 7px;font-size:.74rem;font-weight:700;}
+  .no {background:rgba(255,123,114,.18);color:#ff7b72;border-radius:4px;padding:1px 7px;font-size:.74rem;font-weight:700;}
+  .mid{background:rgba(227,179,65,.15); color:#e3b341;border-radius:4px;padding:1px 7px;font-size:.74rem;font-weight:700;}
+
+  /* ── Chain / Flow ── */
+  .row{display:flex;align-items:stretch;gap:0;margin-bottom:9px;}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:7px;
+       padding:9px 12px;flex:1;text-align:center;font-size:.74rem;font-weight:600;
+       color:#fff;line-height:1.3;}
+  .box small{display:block;font-size:.63rem;font-weight:400;color:var(--muted);}
+  .box.g {border-color:var(--accent); background:rgba(63,185,80,.12); color:var(--accent);}
+  .box.b {border-color:var(--accent2);background:rgba(88,166,255,.1);  color:var(--accent2);}
+  .box.p2{border-color:var(--purple); background:rgba(188,140,255,.1); color:var(--purple);}
+  .box.y {border-color:var(--yellow); background:rgba(227,179,65,.1);  color:var(--yellow);}
+  .arr{color:var(--muted);align-self:center;padding:0 4px;font-size:.9rem;flex-shrink:0;}
+
+  /* ── Callout ── */
+  .note{background:rgba(63,185,80,.08);border-left:3px solid var(--accent);
+        border-radius:0 7px 7px 0;padding:11px 15px;font-size:.87rem;color:var(--muted);line-height:1.55;}
+  .note strong{color:var(--accent);}
+  .note.b{background:rgba(88,166,255,.08);border-left-color:var(--accent2);}
+  .note.b strong{color:var(--accent2);}
+  .note.w{background:rgba(255,166,87,.08);border-left-color:var(--orange);}
+  .note.w strong{color:var(--orange);}
+
+  /* ── Agenda ── */
+  .ai{display:flex;align-items:center;gap:14px;padding:7px 12px;border-radius:7px;}
+  .ai:hover{background:rgba(255,255,255,.04);}
+  .an{width:26px;height:26px;background:var(--accent);color:#0d1117;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;}
+  .at{font-weight:600;color:var(--text);font-size:.92rem;}
+  .ad{font-size:.76rem;color:var(--muted);margin-top:1px;}
+
+  /* ── Misc ── */
+  .mt{margin-top:12px;} .mt8{margin-top:8px;} .mt16{margin-top:16px;}
+  .dim{font-size:.76rem;color:var(--muted);}
+  .hl{color:#fff;font-weight:600;}
+
+  /* ── Backgrounds ── */
+  .cover{background:radial-gradient(ellipse at 68% 35%,rgba(63,185,80,.28) 0%,transparent 52%),
+         radial-gradient(ellipse at 12% 78%,rgba(88,166,255,.18) 0%,transparent 48%),var(--bg);}
+  .sec{background:radial-gradient(ellipse at 90% 50%,rgba(63,185,80,.12) 0%,transparent 55%),var(--bg2);}
+
+  /* ── Nav ── */
+  #nav{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+       display:flex;align-items:center;gap:12px;
+       background:rgba(0,0,0,.6);backdrop-filter:blur(12px);
+       border:1px solid rgba(255,255,255,.1);border-radius:36px;padding:8px 20px;z-index:100;}
+  #nav button{background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;
+              padding:3px 7px;border-radius:6px;transition:color .2s,background .2s;}
+  #nav button:hover{background:rgba(255,255,255,.09);color:#fff;}
+  #ctr{font-size:.8rem;font-weight:700;color:var(--accent);min-width:52px;text-align:center;}
+  #bar{position:fixed;top:0;left:0;height:3px;
+       background:linear-gradient(90deg,var(--accent),var(--accent2));
+       transition:width .3s ease;z-index:200;}
+  #hb{position:fixed;top:14px;left:18px;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:5px 12px;
+      font-size:.75rem;font-weight:600;color:var(--muted);text-decoration:none;z-index:100;
+      transition:color .2s,background .2s;}
+  #hb:hover{color:#fff;background:rgba(63,185,80,.25);}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<a id="hb" href="../index.html">← Índice</a>
+<div id="deck">
+
+<!-- ══ 1 — CAPA ══ -->
+<div class="slide cover active">
+  <div class="tag">Microsoft Graph API · SharePoint Online · Entra ID</div>
+  <h1>Acesso ao SharePoint<br><em>via Graph API</em></h1>
+  <p class="sub">
+    Como escolher a identidade certa, configurar o mínimo de permissões,
+    baixar arquivos e metadados — com Service Principal ou Managed Identity.
+  </p>
+  <div class="meta">
+    <span class="badge">🌐 Microsoft Graph API</span>
+    <span class="badge">🔐 Service Principal</span>
+    <span class="badge">🪪 Managed Identity</span>
+    <span class="badge">🏢 Sites.Selected</span>
+    <span class="badge">📁 SharePoint Online</span>
+  </div>
+</div>
+
+<!-- ══ 2 — AGENDA ══ -->
+<div class="slide sec">
+  <div class="tag">Conteúdo</div>
+  <h2><span class="ico">📋</span> Agenda</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 28px;">
+    <div class="ai"><div class="an">1</div><div><div class="at">Graph API vs REST / ACS</div><div class="ad">Por que Graph é o caminho certo</div></div></div>
+    <div class="ai"><div class="an">6</div><div><div class="at">Permissões no Entra ID</div><div class="ad">Como configurar para SP e MI</div></div></div>
+    <div class="ai"><div class="an">2</div><div><div class="at">Service Principal vs MI</div><div class="ad">Mesma tenant — quando usar cada um</div></div></div>
+    <div class="ai"><div class="an">7</div><div><div class="at">Grant no Site Collection</div><div class="ad">POST /sites/{id}/permissions com código</div></div></div>
+    <div class="ai"><div class="an">3</div><div><div class="at">Mínimo privilégio</div><div class="ad">Sites.Selected — granularidade por biblioteca</div></div></div>
+    <div class="ai"><div class="an">8</div><div><div class="at">User-Assigned vs System-Assigned MI</div><div class="ad">Diferenças e recomendação</div></div></div>
+    <div class="ai"><div class="an">4</div><div><div class="at">Recomendação SP vs MI</div><div class="ad">Qual é melhor para cada cenário</div></div></div>
+    <div class="ai"><div class="an">9</div><div><div class="at">Baixar arquivos com Graph API</div><div class="ad">Listar + download — código Python</div></div></div>
+    <div class="ai"><div class="an">5</div><div><div class="at">SP: certificado + Key Vault</div><div class="ad">Por que cert, nunca secret</div></div></div>
+    <div class="ai"><div class="an">10</div><div><div class="at">Baixar metadados</div><div class="ad">$expand=listItem — campo Depto</div></div></div>
+  </div>
+  <div class="note mt16" style="font-size:.82rem;">
+    <strong>+</strong> Cheklist de implementação para SP e para MI ao final
+  </div>
+</div>
+
+<!-- ══ 3 — GRAPH VS REST / ACS ══ -->
+<div class="slide sec">
+  <div class="tag">API</div>
+  <h2><span class="ico">🌐</span> Graph API vs REST / ACS — por que Graph?</h2>
+  <table>
+    <thead><tr><th>Critério</th><th>SharePoint REST API (/_api)</th><th>Azure Cognitive Search connector (ACS)</th><th>Microsoft Graph API</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="hl">Autenticação</td>
+        <td>Cookie / token SPO — depende de contexto do site</td>
+        <td>App Registration com Sites.Read.All ou admin cred</td>
+        <td><span class="ok">✅ SP ou MI — standardizado</span></td>
+      </tr>
+      <tr>
+        <td class="hl">Escopo mínimo</td>
+        <td><span class="no">❌ Não suporta Sites.Selected</span></td>
+        <td><span class="no">❌ Exige Sites.ReadAll ou SharePoint admin</span></td>
+        <td><span class="ok">✅ Sites.Selected — por site</span></td>
+      </tr>
+      <tr>
+        <td class="hl">Metadados de lista</td>
+        <td>Disponível via /_api/web/lists mas endpoint diferente</td>
+        <td>Mapeamento parcial, configuração manual</td>
+        <td><span class="ok">✅ $expand=listItem($expand=fields) — nativo</span></td>
+      </tr>
+      <tr>
+        <td class="hl">Download de arquivo</td>
+        <td>/_api/web/GetFileByUrl — URL dependente do site</td>
+        <td>Via indexador — não dá controle granular</td>
+        <td><span class="ok">✅ /drives/{id}/items/{id}/content ou @downloadUrl</span></td>
+      </tr>
+      <tr>
+        <td class="hl">Suporte a MI</td>
+        <td><span class="no">❌ Sem suporte nativo a MI</span></td>
+        <td><span class="mid">⚠️ Parcial via indexer MI</span></td>
+        <td><span class="ok">✅ Nativo — ManagedIdentityCredential</span></td>
+      </tr>
+      <tr>
+        <td class="hl">Evolução / suporte</td>
+        <td>Legado — Microsoft não investe mais</td>
+        <td>Dependente do conector ACS</td>
+        <td><span class="ok">✅ Produto principal — todas as novidades</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note mt">
+    <strong>Conclusão:</strong> SHA REST é legado. ACS connector é uma caixa preta sem controle de escopo. Graph API é o único que suporta <strong>Sites.Selected + MI + metadados em uma chamada</strong>.
+  </div>
+</div>
+
+<!-- ══ 4 — SP VS MI ══ -->
+<div class="slide sec">
+  <div class="tag">Identidade</div>
+  <h2><span class="ico">🆚</span> Service Principal vs Managed Identity</h2>
+  <div class="g2" style="align-items:start;">
+    <div>
+      <div class="c blue" style="margin-bottom:12px;">
+        <h3>🔐 Service Principal</h3>
+        <ul>
+          <li>Objeto no Entra ID criado a partir de um <span class="hl">App Registration</span></li>
+          <li>Você gerencia a credencial: <span class="hl">client secret</span> ou <span class="hl">certificado</span></li>
+          <li>Funciona em qualquer runtime: local, CI/CD, on-prem, Azure</li>
+          <li>Pode autenticar em <span class="hl">tenants diferentes</span> (cross-tenant)</li>
+          <li>Credencial tem expiração — requer rotação</li>
+        </ul>
+      </div>
+      <div class="c ok">
+        <h3>🪪 Managed Identity</h3>
+        <ul>
+          <li>Identidade <span class="hl">gerenciada pelo Azure</span> — sem credencial</li>
+          <li>Token obtido automaticamente via endpoint IMDS da plataforma</li>
+          <li>Só funciona em recursos Azure com suporte: VM, Container Apps, Functions, AKS</li>
+          <li>Requer que Azure e SharePoint estejam no <span class="hl">mesmo tenant Entra ID</span></li>
+          <li>Completamente <span class="hl">passwordless</span> — zero rotação</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="note b" style="margin-bottom:12px;">
+        <strong>Seu cenário (SPO + Azure, mesmo tenant):</strong><br>
+        Os dois funcionam. A escolha depende de onde o código roda e se há outros tenants envolvidos.
+      </div>
+      <table>
+        <thead><tr><th>Onde o código roda</th><th>Recomendação</th></tr></thead>
+        <tbody>
+          <tr><td>Container App / VM / Function no Azure</td><td><span class="ok">✅ MI</span></td></tr>
+          <tr><td>Máquina local / script dev</td><td><span class="mid">SP + az login</span></td></tr>
+          <tr><td>GitHub Actions / Azure DevOps</td><td><span class="ok">✅ Federated MI ou SP</span></td></tr>
+          <tr><td>On-premises</td><td><span class="mid">SP</span></td></tr>
+          <tr><td>Tenants diferentes (Azure ≠ O365)</td><td><span class="mid">SP obrigatório</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 5 — MÍNIMO PRIVILÉGIO / SITES.SELECTED ══ -->
+<div class="slide sec">
+  <div class="tag">Segurança</div>
+  <h2><span class="ico">🔒</span> Mínimo privilégio — Sites.Selected</h2>
+  <div class="g2" style="align-items:start;">
+    <div>
+      <table style="margin-bottom:12px;">
+        <thead><tr><th>Permissão</th><th>Escopo efetivo</th><th>Recomendada?</th></tr></thead>
+        <tbody>
+          <tr><td><code>Sites.ReadWrite.All</code></td><td>Todos os sites, escrita</td><td><span class="no">❌ Nunca</span></td></tr>
+          <tr><td><code>Sites.Read.All</code></td><td>Todos os sites, leitura</td><td><span class="no">❌ Evitar</span></td></tr>
+          <tr><td><code>Sites.Selected</code></td><td>Só sites explicitamente autorizados</td><td><span class="ok">✅ Sempre</span></td></tr>
+        </tbody>
+      </table>
+      <div class="note w">
+        <strong>Sites.Selected ≠ acesso automático.</strong> Ter o App Role não dá acesso a nada — é preciso fazer um segundo passo: autorizar explicitamente cada site (Slide 8).
+      </div>
+    </div>
+    <div>
+      <div class="c dim" style="margin-bottom:12px;">
+        <h3>Granularidade na prática</h3>
+        <ul>
+          <li>O grant é por <span class="hl">site collection</span> — não por biblioteca individual</li>
+          <li>Se precisar isolar acesso a uma biblioteca específica:<br>
+            → Crie um site separado apenas para essa biblioteca<br>
+            → Conceda o grant apenas nesse site</li>
+          <li>Roles disponíveis: <code>"read"</code>, <code>"write"</code>, <code>"manage"</code>, <code>"fullControl"</code></li>
+          <li>Para RAG (somente leitura): sempre <code>"read"</code></li>
+        </ul>
+      </div>
+      <div class="note">
+        <strong>Princípio:</strong> um site collection, um grant, um propósito. Se o app não precisa escrever, não dê <code>write</code>. Se precisar de apenas um site, não use <code>Sites.Read.All</code>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 6 — RECOMENDAÇÃO SP VS MI ══ -->
+<div class="slide sec">
+  <div class="tag">Decisão</div>
+  <h2><span class="ico">🧭</span> Qual é o melhor? SP vs MI — recomendação</h2>
+  <div class="g2" style="align-items:start;gap:24px;">
+    <div>
+      <div class="c blue" style="margin-bottom:14px;">
+        <h3>🔐 Prefira Service Principal quando:</h3>
+        <ul>
+          <li>Código roda <span class="hl">fora do Azure</span> (local, on-prem, CI/CD externo)</li>
+          <li>O tenant do SharePoint é <span class="hl">diferente</span> do tenant Azure</li>
+          <li>Precisa de um Client ID portátil (usar o mesmo SP em múltiplos ambientes)</li>
+          <li>Time precisa auditar e controlar a credencial explicitamente</li>
+        </ul>
+        <div class="note b mt8">
+          <strong>Segurança obrigatória:</strong> use sempre <span class="hl">certificado</span>, nunca client secret. Guarde o certificado no Key Vault.
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="c ok" style="margin-bottom:14px;">
+        <h3>🪪 Prefira Managed Identity quando:</h3>
+        <ul>
+          <li>Código roda em <span class="hl">Azure</span>: Container App, VM, Function, AKS</li>
+          <li>SPO e Azure no <span class="hl">mesmo tenant Entra ID</span></li>
+          <li>Zero tolerância para rotação de chaves</li>
+          <li>Arquitetura <span class="hl">passwordless</span> é requisito de segurança</li>
+          <li>Prefira <span class="hl">User-Assigned</span> para poder fazer grants antes do deploy</li>
+        </ul>
+        <div class="note mt8">
+          <strong>Produção em Azure:</strong> MI é sempre superior — elimina toda a superfície de ataque por credencial vazada.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="box b">Local / CI/CD externo<br><small>→ Service Principal + Cert</small></div>
+    <div class="arr">|</div>
+    <div class="box g">Azure + mesmo tenant<br><small>→ Managed Identity (UAMI)</small></div>
+    <div class="arr">|</div>
+    <div class="box p2">Cross-tenant<br><small>→ Service Principal obrigatório</small></div>
+  </div>
+</div>
+
+<!-- ══ 7 — SP: CERTIFICADO + KEY VAULT ══ -->
+<div class="slide sec">
+  <div class="tag">Service Principal</div>
+  <h2><span class="ico">🛡️</span> SP: por que certificado, nunca client secret</h2>
+  <div class="g2" style="align-items:start;">
+    <div>
+      <table style="margin-bottom:12px;">
+        <thead><tr><th></th><th>Client Secret</th><th>Certificado</th></tr></thead>
+        <tbody>
+          <tr><td class="hl">Formato</td><td>String — pode aparecer em log, env, git</td><td>Par de chaves — chave privada nunca sai do KV</td></tr>
+          <tr><td class="hl">Vazamento</td><td><span class="no">❌ Alta superfície — qualquer print/log</span></td><td><span class="ok">✅ Bytes PFX em memória, efêmero</span></td></tr>
+          <tr><td class="hl">Rotação</td><td>Manual — fácil de esquecer</td><td>Data de expiração visível no KV</td></tr>
+          <tr><td class="hl">Recomendação MS</td><td>Apenas para testes</td><td><span class="ok">✅ Apps não-interativas em produção</span></td></tr>
+        </tbody>
+      </table>
+      <div class="note w">
+        <strong>Nunca</strong> coloque o client secret em uma variável de ambiente do Container App ou em um arquivo <code>.env</code> versionado.
+      </div>
+    </div>
+    <div>
+      <pre style="font-size:.74rem;"><code><span class="c1"># 1. Gerar certificado direto no Key Vault</span>
+<span class="p">az keyvault certificate create</span> \
+  <span class="k">--vault-name</span> kv4spo \
+  <span class="k">--name</span> sp4spo-cert \
+  <span class="k">--policy</span> "$(az keyvault certificate \
+      get-default-policy)"
+
+<span class="c1"># 2. Exportar .cer (público) para registrar no SP</span>
+<span class="p">az keyvault certificate download</span> \
+  <span class="k">--vault-name</span> kv4spo \
+  <span class="k">--name</span> sp4spo-cert \
+  <span class="k">--file</span> sp4spo.cer <span class="k">--encoding</span> DER
+
+<span class="c1"># 3. Vincular ao App Registration</span>
+<span class="p">az ad app credential reset</span> \
+  <span class="k">--id</span> &lt;APP_ID&gt; \
+  <span class="k">--cert</span> @sp4spo.cer \
+  <span class="k">--append</span>
+
+<span class="c1"># No código: KV salva PFX automaticamente como secret</span>
+<span class="n">secret</span> = kv.<span class="p">get_secret</span>(<span class="s">"sp4spo-cert"</span>)
+<span class="n">cert</span>   = base64.<span class="p">b64decode</span>(<span class="n">secret</span>.value)
+<span class="n">cred</span>   = <span class="p">CertificateCredential</span>(
+    tenant_id=<span class="n">tenant_id</span>, client_id=<span class="n">client_id</span>,
+    certificate_data=<span class="n">cert</span>)</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 8 — PERMISSÕES NO ENTRA ID ══ -->
+<div class="slide sec">
+  <div class="tag">Entra ID</div>
+  <h2><span class="ico">🔑</span> Permissões no Entra ID — como configurar</h2>
+  <div class="g2" style="align-items:start;">
+    <div>
+      <h3 style="margin-bottom:8px;">Para Service Principal</h3>
+      <pre style="font-size:.74rem;margin-bottom:12px;"><code><span class="c1"># 1. App Registration</span>
+<span class="p">az ad app create</span> --display-name sp4spo \
+  --sign-in-audience AzureADMyOrg
+
+<span class="c1"># 2. Service Principal</span>
+<span class="p">az ad sp create</span> --id &lt;APP_ID&gt;
+
+<span class="c1"># 3. Adicionar App Role Sites.Selected</span>
+<span class="c1">#    Graph: 00000003-0000-0000-c000-000000000000</span>
+<span class="c1">#    Role:  883ea226-0bf2-4a8f-9f9d-92c9162b76e3</span>
+<span class="p">az ad app permission add</span> \
+  --id &lt;APP_ID&gt; \
+  --api 00000003-0000-0000-c000-000000000000 \
+  --api-permissions \
+    883ea226-0bf2-4a8f-9f9d-92c9162b76e3=Role
+
+<span class="c1"># 4. Admin Consent (requer Global Admin)</span>
+<span class="p">az ad app permission admin-consent</span> \
+  --id &lt;APP_ID&gt;</code></pre>
+    </div>
+    <div>
+      <h3 style="margin-bottom:8px;">Para Managed Identity</h3>
+      <pre style="font-size:.74rem;margin-bottom:12px;"><code><span class="c1"># Sem App Registration — MI já é um SP no tenant</span>
+<span class="c1"># Precisamos atribuir o App Role diretamente via Graph</span>
+
+<span class="n">GRAPH_SP</span>=$(az ad sp show \
+  --id 00000003-0000-0000-c000-000000000000 \
+  --query "{id:id, roleId:appRoles[?value=='Sites.Selected'].id|[0]}" \
+  -o json)
+<span class="n">GRAPH_ID</span>=$(echo $GRAPH_SP | jq -r '.id')
+<span class="n">ROLE_ID</span>=$(echo $GRAPH_SP | jq -r '.roleId')
+<span class="n">MI_OID</span>=<span class="s">"&lt;principalId da UAMI&gt;"</span>
+<span class="n">TOKEN</span>=$(az account get-access-token \
+  --resource https://graph.microsoft.com \
+  --query accessToken -o tsv)
+
+curl -X POST \
+  "https://graph.microsoft.com/v1.0/servicePrincipals/$MI_OID/appRoleAssignments" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"principalId\":\"$MI_OID\",
+       \"resourceId\":\"$GRAPH_ID\",
+       \"appRoleId\":\"$ROLE_ID\"}"</code></pre>
+      <div class="note" style="font-size:.8rem;">
+        <strong>Admin Consent automático</strong> para MI: o App Role Assignment via Graph já aplica o consent — não precisa do passo adicional como no SP.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 9 — GRANT NO SITE COLLECTION ══ -->
+<div class="slide sec">
+  <div class="tag">Site Collection</div>
+  <h2><span class="ico">🏢</span> Grant no Site Collection — POST /permissions</h2>
+  <div class="g2" style="align-items:start;">
+    <div>
+      <ul class="steps" style="margin-bottom:14px;">
+        <li>Obter token de acesso ao Graph (<code>az account get-access-token</code>)</li>
+        <li>Resolver o <span class="hl">Site ID</span> a partir da URL do site</li>
+        <li>POST em <code>/sites/{site-id}/permissions</code> com o Client ID do SP ou MI</li>
+        <li>Verificar com GET <code>/sites/{site-id}/permissions</code></li>
+      </ul>
+      <div class="note w" style="margin-bottom:10px;">
+        <strong>Client ID ≠ Object ID.</strong> No campo <code>application.id</code> do /permissions use sempre o <strong>Client ID</strong> (appId), nunca o Object ID / principalId.
+      </div>
+      <div class="note">
+        <strong>Quem pode fazer o grant:</strong> Site Collection Administrator do SharePoint. Não precisa de Global Admin — só admin do site.
+      </div>
+    </div>
+    <div>
+      <pre style="font-size:.74rem;"><code><span class="n">TOKEN</span>=$(az account get-access-token \
+  --resource https://graph.microsoft.com \
+  --query accessToken -o tsv)
+
+<span class="c1"># 1. Resolver site ID</span>
+<span class="n">SITE_ID</span>=$(curl -s \
+  <span class="s">"https://graph.microsoft.com/v1.0/sites/</span>
+<span class="s">   {tenant}.sharepoint.com:/sites/financeiro"</span> \
+  -H <span class="s">"Authorization: Bearer $TOKEN"</span> \
+  | jq -r '.id')
+
+<span class="c1"># 2. Conceder leitura ao SP ou MI</span>
+curl -s -X POST \
+  <span class="s">"https://graph.microsoft.com/v1.0/sites/$SITE_ID/permissions"</span> \
+  -H <span class="s">"Authorization: Bearer $TOKEN"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{
+    "roles": ["read"],
+    "grantedToIdentities": [{
+      "application": {
+        "id":          "&lt;CLIENT_ID do SP ou MI&gt;",
+        "displayName": "indexer-app"
+      }
+    }]
+  }'</span>
+
+<span class="c1"># 3. Verificar</span>
+curl -s \
+  <span class="s">"https://graph.microsoft.com/v1.0/sites/$SITE_ID/permissions"</span> \
+  -H <span class="s">"Authorization: Bearer $TOKEN"</span> \
+  | jq <span class="s">'.value[].grantedToIdentities'</span></code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 10 — USER-ASSIGNED VS SYSTEM-ASSIGNED ══ -->
+<div class="slide sec">
+  <div class="tag">Managed Identity</div>
+  <h2><span class="ico">🪪</span> User-Assigned vs System-Assigned MI</h2>
+  <table style="margin-bottom:16px;">
+    <thead><tr><th>Característica</th><th>User-Assigned (UAMI)</th><th>System-Assigned (SAMI)</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="hl">Client ID</td>
+        <td><span class="ok">✅ Conhecido antes do deploy</span></td>
+        <td><span class="no">❌ Gerado apenas no deploy do recurso</span></td>
+      </tr>
+      <tr>
+        <td class="hl">RBAC / grants antecipados</td>
+        <td><span class="ok">✅ Pode configurar KV, Sites.Selected antes de criar o container</span></td>
+        <td><span class="no">❌ Precisa do deploy para obter o principalId</span></td>
+      </tr>
+      <tr>
+        <td class="hl">Ciclo de vida</td>
+        <td>Independente — persiste se o container for excluído</td>
+        <td>Amarrado — excluiu o recurso, excluiu a MI</td>
+      </tr>
+      <tr>
+        <td class="hl">Reutilização</td>
+        <td><span class="ok">✅ Pode ser anexada a múltiplos containers / VMs</span></td>
+        <td><span class="no">❌ Exclusiva do recurso onde foi criada</span></td>
+      </tr>
+      <tr>
+        <td class="hl">Troca sem downtime</td>
+        <td>Troca o attach no container — código não muda</td>
+        <td>Recria o recurso inteiro</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="g2">
+    <div class="note">
+      <strong>Recomendação: sempre User-Assigned.</strong> O Client ID conhecido antes do deploy permite criar todos os grants (Key Vault Secrets User, Sites.Selected, AI Search roles) em IaC/scripts antes do primeiro deploy.
+    </div>
+    <pre style="font-size:.78rem;"><code><span class="c1"># Criar UAMI</span>
+<span class="p">az identity create</span> \
+  --name mi-indexer \
+  --resource-group rg4spo
+
+<span class="c1"># Capturar IDs necessários</span>
+<span class="p">az identity show</span> \
+  --name mi-indexer --resource-group rg4spo \
+  --query <span class="s">"{clientId:clientId,
+             principalId:principalId}"</span></code></pre>
+  </div>
+</div>
+
+<!-- ══ 11 — BAIXAR ARQUIVOS ══ -->
+<div class="slide sec">
+  <div class="tag">Graph API · Código</div>
+  <h2><span class="ico">📥</span> Baixar arquivos com Graph API</h2>
+  <div class="g2" style="align-items:start;">
+    <div>
+      <div class="row" style="margin-bottom:12px;">
+        <div class="box b">token<br><small>get_token()</small></div>
+        <div class="arr">→</div>
+        <div class="box b">site_id<br><small>/sites/{host}:{path}</small></div>
+        <div class="arr">→</div>
+        <div class="box b">drive_id<br><small>/sites/{id}/drives</small></div>
+        <div class="arr">→</div>
+        <div class="box b">items<br><small>/drives/{id}/root/children</small></div>
+        <div class="arr">→</div>
+        <div class="box g">content<br><small>/items/{id}/content</small></div>
+      </div>
+      <pre style="font-size:.73rem;"><code><span class="c1"># Resolver site ID</span>
+<span class="k">def</span> <span class="p">get_site_id</span>(token, site_url):
+    host, path = <span class="p">_parse_url</span>(site_url)
+    r = requests.<span class="p">get</span>(
+        <span class="s">f"https://graph.microsoft.com/v1.0/sites/{host}:{path}"</span>
+        <span class="s">"?$select=id,displayName"</span>,
+        headers={<span class="s">"Authorization"</span>: <span class="s">f"Bearer {token}"</span>})
+    r.<span class="p">raise_for_status</span>()
+    <span class="k">return</span> r.<span class="p">json</span>()[<span class="s">"id"</span>]
+
+<span class="c1"># Encontrar drive (biblioteca) pelo nome</span>
+<span class="k">def</span> <span class="p">find_drive_id</span>(token, site_id, library):
+    r = requests.<span class="p">get</span>(
+        <span class="s">f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives"</span>
+        <span class="s">"?$select=id,name"</span>,
+        headers={<span class="s">"Authorization"</span>: <span class="s">f"Bearer {token}"</span>})
+    drives = r.<span class="p">json</span>()[<span class="s">"value"</span>]
+    drive = next(d <span class="k">for</span> d <span class="k">in</span> drives <span class="k">if</span> d[<span class="s">"name"</span>] == library)
+    <span class="k">return</span> drive[<span class="s">"id"</span>]</code></pre>
+    </div>
+    <div>
+      <pre style="font-size:.73rem;"><code><span class="c1"># Listar arquivos .txt na raiz da biblioteca</span>
+<span class="k">def</span> <span class="p">list_txt_files</span>(token, drive_id):
+    r = requests.<span class="p">get</span>(
+        <span class="s">f"https://graph.microsoft.com/v1.0"</span>
+        <span class="s">f"/drives/{drive_id}/root/children"</span>
+        <span class="s">"?$select=id,name,file"</span>,
+        headers={<span class="s">"Authorization"</span>: <span class="s">f"Bearer {token}"</span>})
+    items = r.<span class="p">json</span>()[<span class="s">"value"</span>]
+    <span class="k">return</span> [i <span class="k">for</span> i <span class="k">in</span> items
+            <span class="k">if</span> <span class="s">"file"</span> <span class="k">in</span> i <span class="k">and</span> i[<span class="s">"name"</span>].<span class="p">endswith</span>(<span class="s">".txt"</span>)]
+
+<span class="c1"># Baixar conteúdo do arquivo</span>
+<span class="k">def</span> <span class="p">download_text</span>(token, drive_id, item_id):
+    r = requests.<span class="p">get</span>(
+        <span class="s">f"https://graph.microsoft.com/v1.0"</span>
+        <span class="s">f"/drives/{drive_id}/items/{item_id}/content"</span>,
+        headers={<span class="s">"Authorization"</span>: <span class="s">f"Bearer {token}"</span>},
+        timeout=60)
+    r.<span class="p">raise_for_status</span>()
+    <span class="k">try</span>:
+        <span class="k">return</span> r.content.<span class="p">decode</span>(<span class="s">"utf-8"</span>)
+    <span class="k">except</span> UnicodeDecodeError:
+        <span class="k">return</span> r.content.<span class="p">decode</span>(<span class="s">"latin-1"</span>, errors=<span class="s">"replace"</span>)</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 12 — BAIXAR METADADOS ══ -->
+<div class="slide sec">
+  <div class="tag">Graph API · Metadados</div>
+  <h2><span class="ico">🏷️</span> Baixar metadados — campo Depto</h2>
+  <div class="g2" style="align-items:start;">
+    <div>
+      <div class="note b" style="margin-bottom:12px;">
+        <strong>$expand=listItem($expand=fields)</strong> retorna os metadados de coluna da lista subjacente ao drive em uma única chamada. Sem $expand, os campos personalizados ficam ocultos.
+      </div>
+      <pre style="font-size:.75rem;"><code><span class="c1"># Listar arquivos COM metadados de colunas da lista</span>
+<span class="k">def</span> <span class="p">list_files_with_meta</span>(token, drive_id):
+    r = requests.<span class="p">get</span>(
+        <span class="s">f"https://graph.microsoft.com/v1.0"</span>
+        <span class="s">f"/drives/{drive_id}/root/children"</span>
+        <span class="s">"?$select=id,name,file"</span>
+        <span class="s">"&$expand=listItem($expand=fields("</span>
+        <span class="s">"$select=Depto))"</span>,
+        headers={<span class="s">"Authorization"</span>: <span class="s">f"Bearer {token}"</span>})
+    items = r.<span class="p">json</span>()[<span class="s">"value"</span>]
+    result = []
+    <span class="k">for</span> item <span class="k">in</span> items:
+        <span class="k">if</span> <span class="s">"file"</span> <span class="k">not in</span> item: <span class="k">continue</span>
+        fields = (item.<span class="p">get</span>(<span class="s">"listItem"</span>) <span class="k">or</span> {}).<span class="p">get</span>(<span class="s">"fields"</span>, {})
+        item[<span class="s">"depto"</span>] = fields.<span class="p">get</span>(<span class="s">"Depto"</span>, <span class="s">""</span>) <span class="k">or</span> <span class="s">""</span>
+        result.<span class="p">append</span>(item)
+    <span class="k">return</span> result</code></pre>
+    </div>
+    <div>
+      <div class="c dim" style="margin-bottom:12px;">
+        <h3>Estrutura da resposta</h3>
+        <pre style="font-size:.73rem;background:transparent;border:none;padding:0;"><code>{
+  <span class="kw">"id"</span>:   <span class="s">"01XYZ..."</span>,
+  <span class="kw">"name"</span>: <span class="s">"relatorio-q1.txt"</span>,
+  <span class="kw">"file"</span>: { ... },
+  <span class="kw">"listItem"</span>: {
+    <span class="kw">"fields"</span>: {
+      <span class="kw">"Depto"</span>: <span class="s">"Financeiro"</span>,
+      <span class="c1">// outros campos se solicitados</span>
+    }
+  }
+}</code></pre>
+      </div>
+      <div class="note">
+        <strong>$select=Depto</strong> dentro do $expand limita a resposta apenas ao campo necessário — evita trazer todos os campos de sistema (Modified, Created, Author, etc.). Adicione outros campos separados por vírgula: <code>$select=Depto,Autor,Ano</code>
+      </div>
+      <div class="note b mt8">
+        <strong>Nome do campo:</strong> é o <em>internal name</em> da coluna no SharePoint, não o display name. Para descobrir: <code>GET /sites/{id}/lists/{list-id}/columns?$select=name,displayName</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 13 — CHECKLIST SP ══ -->
+<div class="slide sec">
+  <div class="tag">Checklist</div>
+  <h2><span class="ico">📋</span> Checklist — Service Principal</h2>
+  <div class="g2" style="align-items:start;gap:24px;">
+    <div>
+      <h3 style="margin-bottom:10px;">Entra ID &amp; Credencial</h3>
+      <ul class="steps">
+        <li>Criar App Registration (<code>az ad app create --display-name sp4spo</code>)</li>
+        <li>Criar Service Principal (<code>az ad sp create --id &lt;APP_ID&gt;</code>)</li>
+        <li>Adicionar App Role <code>Sites.Selected</code> (<code>az ad app permission add ...</code>)</li>
+        <li>Admin Consent (<code>az ad app permission admin-consent --id &lt;APP_ID&gt;</code>)</li>
+        <li>Gerar certificado no Key Vault (<code>az keyvault certificate create</code>)</li>
+        <li>Exportar <code>.cer</code> e vincular ao SP (<code>az ad app credential reset --cert</code>)</li>
+        <li>Conceder <strong style="color:#fff">Key Vault Secrets User</strong> ao runtime (MI ou usuário dev)</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-bottom:10px;">SharePoint &amp; Runtime</h3>
+      <ul class="steps">
+        <li>Resolver Site ID com <code>GET /sites/{host}:{path}</code></li>
+        <li>Fazer grant no site: <code>POST /sites/{id}/permissions</code> com <code>roles:["read"]</code> e <code>application.id = &lt;CLIENT_ID&gt;</code></li>
+        <li>Verificar: <code>GET /sites/{id}/permissions</code></li>
+        <li>Definir no ambiente: <code>SP_CLIENT_ID</code>, <code>SHAREPOINT_TENANT_ID</code>, <code>KV_CERT_NAME</code>, <code>AZURE_KEYVAULT_URL</code></li>
+        <li>Testar autenticação: obter token Graph e resolver <code>site_id</code></li>
+        <li>Testar download: listar arquivos + baixar conteúdo + verificar metadados</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 14 — CHECKLIST MI ══ -->
+<div class="slide sec">
+  <div class="tag">Checklist</div>
+  <h2><span class="ico">📋</span> Checklist — Managed Identity (mesmo tenant)</h2>
+  <div class="g2" style="align-items:start;gap:24px;">
+    <div>
+      <h3 style="margin-bottom:10px;">Entra ID &amp; MI</h3>
+      <ul class="steps">
+        <li>Criar UAMI (<code>az identity create --name mi-indexer --resource-group rg</code>)</li>
+        <li>Anotar <code>clientId</code> (para grants) e <code>principalId</code> (Object ID do SP da MI)</li>
+        <li>Obter SP do Graph + Role ID de <code>Sites.Selected</code> via <code>az ad sp show</code></li>
+        <li>Fazer App Role Assignment: <code>POST /servicePrincipals/{mi_oid}/appRoleAssignments</code></li>
+        <li>Conceder <strong style="color:#fff">Key Vault Secrets User</strong> à MI no KV (se usar KV para outros segredos)</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-bottom:10px;">SharePoint &amp; Runtime</h3>
+      <ul class="steps">
+        <li>Resolver Site ID com <code>GET /sites/{host}:{path}</code></li>
+        <li>Fazer grant no site: <code>POST /sites/{id}/permissions</code> com <code>roles:["read"]</code> e <code>application.id = &lt;MI_CLIENT_ID&gt;</code></li>
+        <li>Verificar: <code>GET /sites/{id}/permissions</code></li>
+        <li>Anexar UAMI ao Container App / VM / Function</li>
+        <li>Definir no ambiente: <code>MI_CLIENT_ID=&lt;clientId da UAMI&gt;</code></li>
+        <li>No código: <code>ManagedIdentityCredential(client_id=MI_CLIENT_ID)</code> → <code>get_token("https://graph.microsoft.com/.default")</code></li>
+        <li>Testar download e metadados</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 15 — COMPARAÇÃO FINAL ══ -->
+<div class="slide cover">
+  <div class="tag">Resumo</div>
+  <h2><span class="ico">🏁</span> Comparação final</h2>
+  <table style="margin-bottom:16px;font-size:.83rem;">
+    <thead>
+      <tr><th>Aspecto</th><th>Service Principal + Cert</th><th>Managed Identity (UAMI)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="hl">Credencial em runtime</td><td>Bytes PFX em memória (recuperado do KV)</td><td><span class="ok">✅ Zero — token via IMDS</span></td></tr>
+      <tr><td class="hl">Rotação</td><td>Renovar cert (+ re-upload no SP)</td><td><span class="ok">✅ Automática pela plataforma</span></td></tr>
+      <tr><td class="hl">Funciona fora do Azure</td><td><span class="ok">✅ Sim — local, CI/CD, on-prem</span></td><td><span class="no">❌ Apenas em recursos Azure</span></td></tr>
+      <tr><td class="hl">Cross-tenant</td><td><span class="ok">✅ Sim</span></td><td><span class="no">❌ Mesmo tenant apenas</span></td></tr>
+      <tr><td class="hl">Configuração inicial</td><td>App Reg + cert + KV + admin consent</td><td>az identity create + App Role Assignment</td></tr>
+      <tr><td class="hl">Grant no site SPO</td><td><code>POST /permissions</code> com clientId do SP</td><td><code>POST /permissions</code> com clientId da MI</td></tr>
+      <tr><td class="hl">Recomendação produção</td><td>Quando tenants diferentes ou fora Azure</td><td><span class="ok">✅ Quando Azure + mesmo tenant</span></td></tr>
+    </tbody>
+  </table>
+  <div class="g2">
+    <div class="note">
+      <strong>Sites.Selected</strong> é obrigatório nos dois casos. Nunca use <code>Sites.Read.All</code> em produção para pipelines de leitura de documentos.
+    </div>
+    <div class="note b">
+      <strong>Código identico</strong> para listar arquivos e baixar metadados — só muda a função que obtém o token: <code>CertificateCredential</code> vs <code>ManagedIdentityCredential</code>.
+    </div>
+  </div>
+</div>
+
+</div><!-- /#deck -->
+
+<div id="nav">
+  <button onclick="go(-1)">&#8592;</button>
+  <span id="ctr">1 / 15</span>
+  <button onclick="go(1)">&#8594;</button>
+</div>
+<script>
+  const slides=document.querySelectorAll('.slide'),ctr=document.getElementById('ctr'),bar=document.getElementById('bar');
+  let cur=0;
+  function show(n){
+    slides[cur].classList.remove('active');
+    cur=Math.max(0,Math.min(n,slides.length-1));
+    slides[cur].classList.add('active');
+    ctr.textContent=(cur+1)+' / '+slides.length;
+    bar.style.width=(slides.length>1?cur/(slides.length-1)*100:100)+'%';
+  }
+  function go(d){show(cur+d);}
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();go(1);}
+    if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();go(-1);}
+    if(e.key==='Home'){e.preventDefault();show(0);}
+    if(e.key==='End'){e.preventDefault();show(slides.length-1);}
+  });
+  let tx=0;
+  document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+  document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(dx<0?1:-1);},{passive:true});
+  show(0);
+</script>
+</body>
+</html>

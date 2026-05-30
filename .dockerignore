@@ -1,0 +1,22 @@
+# Segredos — nunca incluir na imagem
+.env
+
+# Ambiente virtual Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Conteúdo não necessário em runtime
+docs/
+slides/
+infra/
+*.md
+*.cer
+*.pfx
+
+# Git e ferramentas dev
+.git/
+.gitignore
+.vscode/

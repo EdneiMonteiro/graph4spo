@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slides v1 — graph4spo</title>
+<style>
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1117;color:#e6edf3;
+       height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px;}
+  h1{font-size:1.8rem;font-weight:700;text-align:center;}
+  h1 em{color:#3fb950;font-style:normal;}
+  p{color:#8b949e;font-size:1rem;text-align:center;max-width:480px;line-height:1.65;}
+  .tags{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+  .tag{background:#1c2130;border:1px solid rgba(63,185,80,.3);border-radius:6px;
+       padding:6px 14px;font-size:.8rem;font-weight:600;color:#3fb950;}
+  a.btn{background:#1c2130;border:1px solid rgba(63,185,80,.4);border-radius:8px;
+        padding:10px 22px;font-size:.9rem;font-weight:600;color:#3fb950;text-decoration:none;
+        transition:background .2s,border-color .2s;}
+  a.btn:hover{background:rgba(63,185,80,.15);border-color:#3fb950;}
+  a.home{font-size:.8rem;color:#8b949e;text-decoration:none;margin-top:8px;}
+  a.home:hover{color:#fff;}
+</style>
+</head>
+<body>
+  <h1>v1 — App Registration<br><em>+ az login</em></h1>
+  <p>Configuração original com Service Principal, certificado X.509 no Key Vault e az login no ambiente dev. Acesso ao SharePoint via Graph API com Sites.Selected e campo <code>depto</code> no AI Search.</p>
+  <div class="tags">
+    <span class="tag">🔐 Service Principal</span>
+    <span class="tag">📜 CertificateCredential</span>
+    <span class="tag">🏢 Sites.Selected</span>
+    <span class="tag">🤖 Azure AI Search</span>
+  </div>
+  <a class="btn" href="../auth/index.html">Ver slides de autenticação →</a>
+  <a class="home" href="../index.html">← Voltar ao índice</a>
+</body>
+</html>
