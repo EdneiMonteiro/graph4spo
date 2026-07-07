@@ -120,3 +120,8 @@ Os nomes e serviços da Microsoft são utilizados apenas para fins descritivos.
 Este projeto **não é afiliado, endossado ou suportado oficialmente pela Microsoft**.
 
 O uso de marcas da Microsoft não deve sugerir qualquer tipo de parceria ou suporte oficial.
+
+## 🤝 Contributing
+
+Issue and pull request creation is restricted to collaborators. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for details.
